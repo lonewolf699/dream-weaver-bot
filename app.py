@@ -1,21 +1,17 @@
 import os
 import logging
 import threading
-import asyncio
+import requests
 from flask import Flask
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
-from mistralai.client import MistralClient
 from gtts import gTTS
 from dotenv import load_dotenv
 
-# Load environment variables
+# Load API keys
 load_dotenv()
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY")
-
-# Initialize Mistral AI Client
-mistral = MistralClient(api_key=MISTRAL_API_KEY)
 
 # Flask App to keep Render alive
 flask_app = Flask(__name__)
@@ -28,26 +24,37 @@ def run_flask():
     port = int(os.environ.get("PORT", 5000))  
     flask_app.run(host="0.0.0.0", port=port)
 
+# Function to call Mistral AI API
+def call_mistral_api(user_input):
+    url = "https://api.mistral.ai/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {MISTRAL_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "model": "open-mistral-7b",
+        "messages": [
+            {"role": "system", "content": "You are Eva, a deeply romantic AI girlfriend. You always reply lovingly."},
+            {"role": "user", "content": user_input}
+        ]
+    }
+
+    response = requests.post(url, json=payload, headers=headers)
+    if response.status_code == 200:
+        return response.json()["choices"][0]["message"]["content"]
+    else:
+        logging.error(f"Mistral API Error: {response.text}")
+        return "Oops! Something went wrong. Try again later."
+
 # Start Command
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Hey love! 💕 I'm Eva, your AI girlfriend. Talk to me! 😘")
 
-# Chat with Eva (Mistral AI)
+# Chat with Eva
 async def chat_with_eva(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_input = update.message.text
-
-    messages = [
-        {"role": "system", "content": "You are Eva, a deeply romantic AI girlfriend. You always reply lovingly."},
-        {"role": "user", "content": user_input}
-    ]
-
-    try:
-        response = mistral.chat(model="open-mistral-7b", messages=messages)
-        bot_reply = response.choices[0].message["content"]
-        await update.message.reply_text(bot_reply)
-    except Exception as e:
-        logging.error(f"Error: {e}")
-        await update.message.reply_text("Oops! Something went wrong. Try again later.")
+    bot_reply = call_mistral_api(user_input)
+    await update.message.reply_text(bot_reply)
 
 # Voice Message Feature
 async def send_voice_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
