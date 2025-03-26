@@ -4,9 +4,9 @@ import asyncio
 from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 from mistralai.client import MistralClient
-from mistralai.client import MistralClient
 from gtts import gTTS
 from dotenv import load_dotenv
+from telegram.ext import Updater
 
 # Load API keys from .env file
 load_dotenv()
@@ -93,14 +93,16 @@ async def send_voice_message(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 # Main Function
 def main():
+    # Ensure your app binds to the correct port
+    port = int(os.environ.get("PORT", 5000))  # Default to 5000 if no port is specified
     app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.Regex("^(Eva ❤️ \Girlfriend Mode\|Zeeshan 💙 \Boyfriend Mode\)$"), select_mode))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat_with_dream_weaver))
-    
-    print("Dream Weaver Bot is running...")
-    app.run_polling()
+
+    print(f"Dream Weaver Bot is running on port {port}...")
+    app.run_polling(allowed_updates=Update.ALL_TYPES, poll_interval=3)
 
 if __name__ == "__main__":
     main()
