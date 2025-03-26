@@ -24,11 +24,6 @@ flask_app = Flask(__name__)
 def home():
     return "Dream Weaver Bot is running!"
 
-# Function to run Flask in a separate thread
-def run_flask():
-    port = int(os.environ.get("PORT", 5000))  # Render requires an open port
-    flask_app.run(host="0.0.0.0", port=port)
-
 # Store user preferences
 user_modes = {}
 
@@ -103,13 +98,13 @@ async def send_voice_message(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 # Main Function (Runs Both Flask & Bot)
 def main():
-    # Start Flask in a separate thread to keep the service alive
-    threading.Thread(target=run_flask, daemon=True).start()
+    # Start Flask in a separate thread to keep the web service alive
+    threading.Thread(target=lambda: flask_app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000))), daemon=True).start()
 
     # Start the Telegram bot
     app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(MessageHandler(filters.Regex("^(Eva ❤️ \Girlfriend Mode\|Zeeshan 💙 \Boyfriend Mode\)$"), select_mode))
+    app.add_handler(MessageHandler(filters.Regex("^(Eva ❤️ Girlfriend Mode|Zeeshan 💙 Boyfriend Mode)$"), select_mode))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat_with_dream_weaver))
 
     print("Dream Weaver Bot is running...")  # You should see this in logs if the bot starts
