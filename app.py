@@ -3,10 +3,9 @@ import logging
 import threading
 import asyncio
 from flask import Flask
-from telegram import Update, ReplyKeyboardMarkup
+from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 from mistralai.client import MistralClient
-from mistralai.models.chat_completion import ChatMessage
 from gtts import gTTS
 from dotenv import load_dotenv
 
@@ -38,13 +37,13 @@ async def chat_with_eva(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_input = update.message.text
 
     messages = [
-        ChatMessage(role="system", content="You are Eva, a loving, affectionate, and romantic AI girlfriend."),
-        ChatMessage(role="user", content=user_input)
+        {"role": "system", "content": "You are Eva, a deeply romantic AI girlfriend. You always reply lovingly."},
+        {"role": "user", "content": user_input}
     ]
 
     try:
-        response = mistral.chat(model="mistral-tiny", messages=messages)
-        bot_reply = response.choices[0].message.content
+        response = mistral.chat(model="open-mistral-7b", messages=messages)
+        bot_reply = response.choices[0].message["content"]
         await update.message.reply_text(bot_reply)
     except Exception as e:
         logging.error(f"Error: {e}")
