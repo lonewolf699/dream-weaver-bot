@@ -1,5 +1,5 @@
 python-telegram-bot
-mistralai==0.4.2
+mistralai==1.6.0
 python-dotenv
 gtts
 flask
