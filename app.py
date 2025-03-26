@@ -1,12 +1,13 @@
 import os
 import requests
 import asyncio
+import threading
+from flask import Flask
 from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 from mistralai.client import MistralClient
 from gtts import gTTS
 from dotenv import load_dotenv
-from telegram.ext import Updater
 
 # Load API keys from .env file
 load_dotenv()
@@ -19,11 +20,21 @@ mistral = MistralClient(api_key=MISTRAL_API_KEY)
 # Store user preferences
 user_modes = {}
 
+# Flask App (Dummy Web Server for Render)
+flask_app = Flask(__name__)
+
+@flask_app.route('/')
+def home():
+    return "Dream Weaver Bot is running!"
+
+def run_flask():
+    port = int(os.environ.get("PORT", 5000))  # Render requires an open port
+    flask_app.run(host="0.0.0.0", port=port)
+
 # Start Command
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [["Eva ❤️ (Girlfriend Mode)", "Zeeshan 💙 (Boyfriend Mode)"]]
     reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True)
-
     await update.message.reply_text("Hey there! Who do you want to chat with today? 😊", reply_markup=reply_markup)
 
 # Handle User Selection
@@ -93,16 +104,18 @@ async def send_voice_message(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 # Main Function
 def main():
-    # Ensure your app binds to the correct port
-    port = int(os.environ.get("PORT", 5000))  # Default to 5000 if no port is specified
-    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+    # Start the dummy Flask server in a separate thread
+    threading.Thread(target=run_flask, daemon=True).start()
 
+    # Start the Telegram bot
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.Regex("^(Eva ❤️ \Girlfriend Mode\|Zeeshan 💙 \Boyfriend Mode\)$"), select_mode))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat_with_dream_weaver))
 
-    print(f"Dream Weaver Bot is running on port {port}...")
+    print("Dream Weaver Bot is running...")
     app.run_polling(allowed_updates=Update.ALL_TYPES, poll_interval=3)
 
 if __name__ == "__main__":
     main()
+    
