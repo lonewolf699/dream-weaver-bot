@@ -9,7 +9,7 @@ from mistralai.client import MistralClient
 from gtts import gTTS
 from dotenv import load_dotenv
 
-# Load API keys from .env file
+# Load API keys from environment variables
 load_dotenv()
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY")
@@ -71,8 +71,8 @@ async def chat_with_dream_weaver(update: Update, context: ContextTypes.DEFAULT_T
     )
 
     messages = [
-        ChatMessage(role="system", content=system_prompt),
-        ChatMessage(role="user", content=user_input)
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_input}
     ]
 
     try:
@@ -102,9 +102,9 @@ async def send_voice_message(update: Update, context: ContextTypes.DEFAULT_TYPE)
     except Exception as e:
         await update.message.reply_text("Sorry, I couldn't generate the voice message.")
 
-# Main Function
+# Main Function (Runs Both Flask & Bot)
 def main():
-    # Start the dummy Flask server in a separate thread
+    # Start Flask in a separate thread (so Render doesn't shut down)
     threading.Thread(target=run_flask, daemon=True).start()
 
     # Start the Telegram bot
@@ -118,4 +118,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
