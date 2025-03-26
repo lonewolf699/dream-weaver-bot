@@ -5,7 +5,7 @@ import threading
 from flask import Flask
 from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
-from mistralai.client import MistralClient
+from mistralai.async_client import MistralAsyncClient  # Updated for v1.6.0
 from gtts import gTTS
 from dotenv import load_dotenv
 
@@ -14,8 +14,8 @@ load_dotenv()
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY")
 
-# Initialize Mistral AI Client
-mistral = MistralClient(api_key=MISTRAL_API_KEY)
+# Initialize Mistral AI Client (New Async Version)
+mistral = MistralAsyncClient(api_key=MISTRAL_API_KEY)
 
 # Flask App (Keeps Render Service Alive)
 flask_app = Flask(__name__)
@@ -23,6 +23,11 @@ flask_app = Flask(__name__)
 @flask_app.route('/')
 def home():
     return "Dream Weaver Bot is running!"
+
+# Function to run Flask in a separate thread
+def run_flask():
+    port = int(os.environ.get("PORT", 5000))  # Render requires an open port
+    flask_app.run(host="0.0.0.0", port=port)
 
 # Store user preferences
 user_modes = {}
@@ -48,6 +53,14 @@ async def select_mode(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await update.message.reply_text("Please select one from the options above!")
 
+# Mistral Chat Function (Async)
+async def chat_with_mistral(messages):
+    response = await mistral.chat(
+        model="mistral-tiny",
+        messages=messages
+    )
+    return response.choices[0].message["content"]
+
 # Chat Response
 async def chat_with_dream_weaver(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_input = update.message.text
@@ -71,8 +84,7 @@ async def chat_with_dream_weaver(update: Update, context: ContextTypes.DEFAULT_T
     ]
 
     try:
-        response = mistral.chat(model="mistral-tiny", messages=messages)
-        bot_reply = response.choices[0].message.content
+        bot_reply = await chat_with_mistral(messages)
         await update.message.reply_text(bot_reply)
     except Exception as e:
         await update.message.reply_text("Oops! Something went wrong. Try again later.")
@@ -98,8 +110,8 @@ async def send_voice_message(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 # Main Function (Runs Both Flask & Bot)
 def main():
-    # Start Flask in a separate thread to keep the web service alive
-    threading.Thread(target=lambda: flask_app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000))), daemon=True).start()
+    # Start Flask in a separate thread to keep the service alive
+    threading.Thread(target=run_flask, daemon=True).start()
 
     # Start the Telegram bot
     app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
